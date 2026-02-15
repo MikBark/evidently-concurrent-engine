@@ -1,7 +1,8 @@
 """Provide a concurrent engine for Evidently."""
 
+import concurrent
 from collections.abc import Callable
-from copy import deepcopy
+from time import time
 from typing import Any, TypeVar
 
 from evidently.base_metric import (
@@ -18,39 +19,66 @@ from evidently.calculation_engine.metric_implementation import (
 from evidently.suite.base_suite import Context
 
 from evidently_concurrent_engine.concurrent import Executor, Future
-from evidently_concurrent_engine.futures_finalization import FuturesFinalization
 
 EngineDataType = TypeVar('EngineDataType')
 MetricImplementationType = TypeVar('MetricImplementationType', bound=MetricImplementation)
 InputDataType = TypeVar('InputDataType', bound=GenericInputData)
-ResultType = TypeVar('ResultType')
+AnyMetricResult = MetricResult | ErrorResult
 
 
 class FutureMetricResult(MetricResult):
-    """Represent a MetricResult containing a Future."""
+    """Represent a `MetricResult` containing a `Future` with timeout handling."""
 
     class Config:
         """Configuration for FutureMetricResult."""
 
         type_alias = 'evidently_concurrent_engine:metric_result:FutureMetricResult'
 
-    future: Future
+    future: Future[AnyMetricResult]
+    timeout: float | int
+    start_time: float | int
+
+    def wait(self) -> AnyMetricResult:
+        """Wait for the future to complete within the timeout and return the result.
+
+        Returns:
+            The resolved MetricResult or an ErrorResult if an exception occurs or timeout
+            is reached.
+        """
+        rest_of_time = max(self.timeout - (time() - self.start_time), 0)
+
+        try:
+            exception = self.future.exception(timeout=rest_of_time)
+        except (concurrent.futures.TimeoutError, concurrent.futures.CancelledError) as e:
+            exception = e
+            self.future.cancel()
+
+        if exception is None:
+            return self.future.result(timeout=0)
+
+        return ErrorResult(exception)
 
 
 class FutureMetricImplementation(MetricImplementation):
-    """Wrap a MetricImplementation to return a FutureMetricResult."""
+    """Wrap a MetricImplementation to return a `FutureMetricResult`."""
 
-    def __init__(self, origin: MetricImplementation | Metric, executor: Executor) -> None:
+    def __init__(
+        self,
+        origin: MetricImplementation | Metric,
+        executor: Executor,
+        timeout: float | int,
+    ) -> None:
         """Initialize metric implementation.
 
         Parameters:
             origin : MetricImplementation | Metric
-                MetricImplementation or Metric instance.
+                Original `MetricImplementation` or `Metric` instance.
             executor : Executor
                 Executor for concurrent execution.
         """
         self._origin = origin
         self._executor = executor
+        self._timeout = timeout
 
     def calculate(self, context: Context, data: InputData) -> FutureMetricResult:
         """Return a FutureMetricResult with an encapsulated started future.
@@ -63,16 +91,17 @@ class FutureMetricImplementation(MetricImplementation):
 
         Returns:
             FutureMetricResult
-                Metric result containing a Future.
+                Metric result containing a `Future`.
         """
         if isinstance(self._origin, MetricImplementation):
             future = self._executor.submit(
-                self._origin.calculate, context=context, data=data,
+                self._origin.calculate,
+                context=context,
+                data=data,
             )
         else:
             future = self._executor.submit(self._origin.calculate, data=data)
-
-        return FutureMetricResult(future=future)
+        return FutureMetricResult(future=future, timeout=self._timeout, start_time=time())
 
     @classmethod
     def supported_engines(cls) -> tuple[type[Engine]]:
@@ -86,39 +115,40 @@ class FutureMetricImplementation(MetricImplementation):
 
 
 class ConcurrentEngine:
-    """Evidently engine wrapper for concurrent metric calculation."""
+    """Evidently engine wrapper for concurrent metric calculation.
+
+    The class patches the `get_metric_implementation` method with a wrapper to return
+    `FutureMetricImplementation` instances.
+    """
 
     def __init__(
         self,
         origin_engine: Engine[MetricImplementationType, InputDataType, EngineDataType],
         executor: Executor,
-        finalization: FuturesFinalization[ResultType],
+        timeout: int | float,
     ) -> None:
-        """Initialize ConcurrentEngine instance.
+        """Initialize `ConcurrentEngine` instance.
 
         Parameters:
-            origin_engine : Engine[MetricImplementationType, InputDataType, EngineDataType]
+            origin_engine : Engine[
+                MetricImplementationType, InputDataType, EngineDataType
+            ]
                 Origin engine to wrap.
             executor : Executor
                 Concurrent executor (for example ThreadPoolExecutor).
-            finalization: FuturesFinalization
-                Futures finalization strategy.
+            timeout : int | float
+                Timeout of metrics execution.
         """
         self._origin_engine = origin_engine
         self._executor = executor
-        self._finalization = finalization
-
-        self._origin_engine.get_metric_implementation = self._future_implementation_wrap(
-                self._origin_engine.get_metric_implementation,
-        )
+        self._timeout = timeout
 
     def execute_metrics(self, context: Context, data: GenericInputData) -> None:
         """Execute Evidently metrics.
 
         This method uses the original engine for metric calculations, but it is
         parallelized with an encapsulated executor. The method waits until all
-        futures have been executed or the timeout has expired, and then retrieves
-        a result.
+        futures have been executed or the timeout has expired, and then finish execution.
 
         Parameters:
             context : Context
@@ -126,31 +156,15 @@ class ConcurrentEngine:
             data : GenericInputData
                 Input data for metric calculation.
         """
-        self._origin_engine.execute_metrics(context, data)
-        context.metric_results = self._get_final_metric_results(context.metric_results)
+        engine = self._origin_engine
+        method_backup = engine.get_metric_implementation
+        engine.get_metric_implementation = self._future_implementation_wrap(method_backup)
+        engine.execute_metrics(context, data)
+        engine.get_metric_implementation = method_backup
 
-    def _future_implementation_wrap(
-        self, origin_method: Callable[[], MetricImplementation | None],
-    ) -> Callable[[], FutureMetricImplementation | None]:
-        def wrapper(metric: Metric | None) -> FutureMetricImplementation:
-            """Retrieve wrapped metric implementation from the origin engine.
-
-            This method is needed to wrap some original engine-specific MetricImplementation
-            into a FutureMetricImplementation. If the engine does not have a
-            MetricImplementation, wrap a Metric instance.
-
-            Parameters:
-                metric : Metric
-                    Metric instance.
-
-            Returns:
-                FutureMetricImplementation
-                    Metric implementation from origin engine wrapped in the future.
-            """
-            origin_metric_impl = origin_method(metric) or metric
-            return FutureMetricImplementation(origin_metric_impl, self._executor)
-
-        return wrapper
+        context.metric_results = {
+            metric: result.wait() for metric, result in context.metric_results.items()
+        }
 
     def __getattr__(self, name: str) -> Any:
         """Proxy calls to the encapsulated origin engine.
@@ -165,18 +179,28 @@ class ConcurrentEngine:
         """
         return getattr(self._origin_engine, name)
 
-    def _get_final_metric_results(
-        self, future_metric_results: dict[Metric, FutureMetricResult],
-    ) -> dict[Metric, MetricResult | ErrorResult]:
-        futures = [result.future for result in future_metric_results.values()]
-        futures_result = self._finalization.finalize(futures)
-        metric_results = {}
-        for name, result in zip(
-            future_metric_results.keys(), futures_result, strict=False,
-        ):
-            if isinstance(result, Exception):
-                metric_results[name] = ErrorResult(result)
-            else:
-                metric_results[name] = result
+    def _future_implementation_wrap(
+        self,
+        origin_method: Callable[[], MetricImplementation | None],
+    ) -> Callable[[], FutureMetricImplementation | None]:
+        def wrapper(metric: Metric | None) -> FutureMetricImplementation:
+            """Retrieve wrapped metric implementation from the origin engine.
 
-        return metric_results
+            This method is needed to wrap some original engine-specific
+            `MetricImplementation` into a `FutureMetricImplementation`. If the engine does
+            not have a `MetricImplementation`, wrap a Metric instance.
+
+            Parameters:
+                metric : Metric
+                    Metric instance.
+
+            Returns:
+                FutureMetricImplementation
+                    Metric implementation from origin engine wrapped in the future.
+            """
+            origin_metric_impl = origin_method(metric) or metric
+            return FutureMetricImplementation(
+                origin_metric_impl, self._executor, self._timeout
+            )
+
+        return wrapper

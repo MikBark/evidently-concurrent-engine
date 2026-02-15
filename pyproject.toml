@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "evidently_concurrent_engine"
-version = "0.0.1"
+version = "0.0.3"
 description = ""
 authors = [
     {name = "Barkov Mikhail", email = "mik.bar@tutamail.com"},
@@ -12,7 +12,7 @@ authors = [
 readme = "README.md"
 requires-python = ">=3.9"
 dependencies = [
-    "evidently>=0.4.38",
+    "evidently>=0.4.38,<0.6",
     'importlib-metadata; python_version>="3.9"',
 ]
 
@@ -38,7 +38,6 @@ preview = true
 fix = true
 target-version = "py39"
 line-length = 90
-#exclude = ["tests/"]
 
 [tool.ruff.format]
 quote-style = "single"

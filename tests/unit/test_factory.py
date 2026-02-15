@@ -33,7 +33,7 @@ def test_factory_call_creates_engine(factory, dummy_executor, dummy_origin_engin
     assert isinstance(engine, ConcurrentEngine)
     assert engine._origin_engine is dummy_origin_engine
     assert engine._executor is dummy_executor
-    assert engine._finalization._timeout == 300
+    assert engine._timeout == 300
     assert factory._concurrent_engine is engine
 
 
@@ -41,3 +41,9 @@ def test_factory_call_returns_same_instance(factory):
     engine1 = factory()
     engine2 = factory()
     assert engine1 is engine2
+
+
+def test_factory_with_default_executor():
+    from concurrent.futures import ThreadPoolExecutor
+    factory = ConcurrentEngineFactory()
+    assert isinstance(factory._executor, ThreadPoolExecutor)
