@@ -1,13 +1,15 @@
 """Provide a factory for creating ConcurrentEngine instances."""
 
+from concurrent.futures import ThreadPoolExecutor
+
 from evidently.calculation_engine.engine import Engine
 from evidently.calculation_engine.python_engine import PythonEngine
 
 from evidently_concurrent_engine.concurrent import Executor
 from evidently_concurrent_engine.engine import ConcurrentEngine
-from evidently_concurrent_engine.futures_finalization import TimeoutFuturesFinalization
 
 DEFAULT_ORIGIN_ENGINE = PythonEngine()
+DEFAULT_EXECUTOR = ThreadPoolExecutor()
 
 
 class ConcurrentEngineFactory:
@@ -20,7 +22,7 @@ class ConcurrentEngineFactory:
 
     def __init__(
         self,
-        executor: Executor,
+        executor: Executor = DEFAULT_EXECUTOR,
         origin_engine: Engine = DEFAULT_ORIGIN_ENGINE,
         timeout: int = 600,
     ) -> None:
@@ -50,7 +52,7 @@ class ConcurrentEngineFactory:
             self._concurrent_engine = ConcurrentEngine(
                 origin_engine=self._origin_engine,
                 executor=self._executor,
-                finalization=TimeoutFuturesFinalization(self._timeout),
+                timeout=self._timeout,
             )
 
         return self._concurrent_engine

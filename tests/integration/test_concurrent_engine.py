@@ -11,10 +11,10 @@ from evidently.metrics import (
     DatasetSummaryMetric,
 )
 from evidently.report import Report
+from evidently.test_preset import DataQualityTestPreset
+from evidently.test_suite import TestSuite
 
 from evidently_concurrent_engine.factory import ConcurrentEngineFactory
-from evidently.test_suite import TestSuite
-from evidently.test_preset import DataQualityTestPreset
 
 
 @pytest.fixture

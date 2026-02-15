@@ -20,6 +20,16 @@ class Future(Protocol, Generic[ResultType_co]):
     including only essential methods.
     """
 
+    def cancel(self) -> bool:
+        """Cancel the future and schedule callbacks.
+
+        Return:
+            bool
+                If the future is already done or cancelled, return False.  Otherwise,
+                change the future's state to cancelled, schedule the callbacks and return
+                True.
+        """
+
     def exception(self, timeout: float | int | None = None) -> Exception | None:
         """Return the exception raised by the call that the future represents.
 
