@@ -10,10 +10,9 @@ authors = [
     {name = "Barkov Mikhail", email = "mik.bar@tutamail.com"},
 ]
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 dependencies = [
     "evidently>=0.4.38,<0.6",
-    'importlib-metadata; python_version>="3.9"',
 ]
 
 [project.optional-dependencies]
@@ -36,7 +35,7 @@ include = ["evidently_concurrent_engine*"]
 [tool.ruff]
 preview = true
 fix = true
-target-version = "py39"
+target-version = "py310"
 line-length = 90
 
 [tool.ruff.format]

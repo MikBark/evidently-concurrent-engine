@@ -8,7 +8,7 @@ A concurrent execution engine for [Evidently](https://github.com/evidentlyai/evi
 pip install evidently_concurrent_engine
 ```
 
-**Dependencies**: Python >= 3.9, evidently >= 0.4.38
+**Dependencies**: Python >= 3.10, evidently >= 0.4.38
 
 ## Quick Start
 
