@@ -25,7 +25,8 @@ class TimeoutFuturesFinalization(FuturesFinalization[ResultType]):
         self._timeout = timeout
 
     def finalize(
-        self, futures: Iterable[Future[ResultType]],
+        self,
+        futures: Iterable[Future[ResultType]],
     ) -> list[ResultType | Exception]:
         """Wait for all futures and collect their results or exceptions.
 
@@ -47,7 +48,9 @@ class TimeoutFuturesFinalization(FuturesFinalization[ResultType]):
         return result
 
     def _wait_single(
-        self, future: Future[ResultType], timeout: float | int,
+        self,
+        future: Future[ResultType],
+        timeout: float | int,
     ) -> ResultType | Exception:
         """Wait for a single future and return its result or exception.
 

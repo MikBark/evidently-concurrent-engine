@@ -8,7 +8,7 @@ A concurrent execution engine for [Evidently](https://github.com/evidentlyai/evi
 pip install evidently_concurrent_engine
 ```
 
-**Dependencies**: Python >= 3.9, evidently >= 0.4.38
+**Dependencies**: Python >= 3.10, evidently >= 0.4.38
 
 ## Quick Start
 
@@ -74,13 +74,13 @@ factory = ConcurrentEngineFactory(timeout=300)
 
 ## When to Use
 
-✅ **Use for**:
+**Use for**:
 - 50+ metrics
 - Datasets > 10k rows
 - Independent metrics
 - Production batch evaluations
 
-❌ **Avoid for**:
+**Avoid for**:
 - 1-2 metrics (overhead > benefit)
 - Very small datasets (<1k rows)
 - Single-core systems

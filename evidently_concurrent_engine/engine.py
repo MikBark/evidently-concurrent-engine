@@ -18,7 +18,7 @@ from evidently.calculation_engine.metric_implementation import (
 )
 from evidently.suite.base_suite import Context
 
-from evidently_concurrent_engine.concurrent import Executor, Future
+from evidently_concurrent_engine.concurrent import Executor
 
 EngineDataType = TypeVar('EngineDataType')
 MetricImplementationType = TypeVar('MetricImplementationType', bound=MetricImplementation)
@@ -34,7 +34,8 @@ class FutureMetricResult(MetricResult):
 
         type_alias = 'evidently_concurrent_engine:metric_result:FutureMetricResult'
 
-    future: Future[AnyMetricResult]
+    # Accept any future result in tests (e.g., MagicMock) by using a loose typing.
+    future: Any
     timeout: float | int
     start_time: float | int
 
