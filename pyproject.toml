@@ -123,7 +123,6 @@ local_partial_types = true
 warn_unreachable = true
 warn_return_any = false
 disallow_subclassing_any = false
-mypy_path = "evidently_concurrent_engine"
 
 enable_error_code = [
   "truthy-bool",
