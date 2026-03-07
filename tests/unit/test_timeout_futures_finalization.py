@@ -9,11 +9,13 @@ from evidently_concurrent_engine.futures_finalization import TimeoutFuturesFinal
 
 @pytest.fixture
 def mock_future():
+    """Mock Future fixture."""
     return MagicMock(spec=Future)
 
 
 @pytest.fixture
 def finalizer():
+    """TimeoutFuturesFinalization fixture."""
     return TimeoutFuturesFinalization()
 
 

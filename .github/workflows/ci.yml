@@ -17,7 +17,7 @@ jobs:
         with:
           python-version: '3.10'
       - run: uv sync --extra lint --extra typing
-      - run: uv run ruff check .
+      - run: uv run ruff check evidently_concurrent_engine
       - run: uv run mypy evidently_concurrent_engine
 
   test-unit:

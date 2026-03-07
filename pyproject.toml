@@ -38,6 +38,9 @@ fix = true
 target-version = "py310"
 line-length = 90
 
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["S101", "SLF001"]
+
 [tool.ruff.format]
 quote-style = "single"
 docstring-code-format = false
@@ -64,7 +67,7 @@ select = [
   "ISC",  # flake8-implicit-str-concat
   "LOG",  # flake8-logging
   "N",    # pep8-naming
-  "PERF", # perflint
+  "PERF",  # perflint
   "PIE",  # flake8-pie
   "PL",   # pylint
   "PT",   # flake8-pytest-style
@@ -76,7 +79,7 @@ select = [
   "S",    # flake8-bandit
   "SIM",  # flake8-simpify
   "SLF",  # flake8-self
-  "SLOT", # flake8-slots
+  "SLOT",  # flake8-slots
   "T100", # flake8-debugger
   "TRY",  # tryceratops
   "UP",   # pyupgrade
