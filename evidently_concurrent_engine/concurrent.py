@@ -4,8 +4,8 @@ This protocol allows replacement with custom executor or future classes while ma
 compatibility with standard concurrency.future and executor classes.
 """
 
-from collections.abc import Sequence
-from typing import Callable, Generic, ParamSpec, Protocol, TypeVar, runtime_checkable
+from collections.abc import Callable, Sequence
+from typing import Generic, ParamSpec, Protocol, TypeVar, runtime_checkable
 
 ResultType_co = TypeVar('ResultType_co', covariant=True)
 ResultType = TypeVar('ResultType')
@@ -80,7 +80,10 @@ class Executor(Protocol):
     """
 
     def submit(
-        self, fn: Callable[P, ResultType], *args: P.args, **kwargs: P.kwargs,
+        self,
+        fn: Callable[P, ResultType],
+        *args: P.args,
+        **kwargs: P.kwargs,
     ) -> Future[ResultType]:
         """Submit a callable to be executed with the given arguments.
 
@@ -102,7 +105,8 @@ class FuturesFinalization(Protocol, Generic[ResultType]):
     """Define a protocol for finalizing multiple futures."""
 
     def finalize(
-        self, futures: Sequence[Future[ResultType]],
+        self,
+        futures: Sequence[Future[ResultType]],
     ) -> Sequence[ResultType | Exception]:
         """Wait for and retrieve results or exceptions from a sequence of futures.
 
